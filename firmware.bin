@@ -16,9 +16,9 @@ int kuning = 26;
 int hijau = 27;
 
 // ===== DURASI AWAL =====
-int dMerah = 4000;
-int dKuning = 2000;
-int dHijau = 4000;
+int dMerah = 1000;
+int dKuning = 1000;
+int dHijau = 1000;
 
 // ===== TIMER OTA =====
 unsigned long lastCheck = 0;
