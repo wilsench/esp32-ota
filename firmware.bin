@@ -1,0 +1,115 @@
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <WiFiClientSecure.h>
+#include <Update.h>
+
+// ===== WIFI =====
+const char* ssid = "Wilsen";
+const char* password = "terserah22";
+
+// ===== URL FIRMWARE (GITHUB RAW) =====
+const char* firmwareUrl = "https://raw.githubusercontent.com/wilsench/esp32-ota/main/firmware.bin";
+
+// ===== PIN LED =====
+int merah = 25;
+int kuning = 26;
+int hijau = 27;
+
+// ===== DURASI AWAL =====
+int dMerah = 4000;
+int dKuning = 2000;
+int dHijau = 4000;
+
+// ===== TIMER OTA =====
+unsigned long lastCheck = 0;
+unsigned long interval = 15000;
+
+void setup() {
+  Serial.begin(115200);
+
+  pinMode(merah, OUTPUT);
+  pinMode(kuning, OUTPUT);
+  pinMode(hijau, OUTPUT);
+
+  WiFi.begin(ssid, password);
+  Serial.print("Connecting WiFi");
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("\nConnected!");
+}
+
+// ===== LOOP =====
+void loop() {
+
+  if (millis() - lastCheck > interval) {
+    lastCheck = millis();
+    cekUpdate();
+  }
+
+  // ===== TRAFFIC LIGHT =====
+  digitalWrite(merah, HIGH);
+  digitalWrite(kuning, LOW);
+  digitalWrite(hijau, LOW);
+  tunggu(dMerah);
+
+  digitalWrite(merah, LOW);
+  digitalWrite(kuning, HIGH);
+  digitalWrite(hijau, LOW);
+  tunggu(dKuning);
+
+  digitalWrite(merah, LOW);
+  digitalWrite(kuning, LOW);
+  digitalWrite(hijau, HIGH);
+  tunggu(dHijau);
+}
+
+// ===== NON-BLOCKING DELAY =====
+void tunggu(int waktu) {
+  unsigned long start = millis();
+  while (millis() - start < waktu) {
+    delay(1);
+  }
+}
+
+// ===== OTA FUNCTION =====
+void cekUpdate() {
+  Serial.println("Cek update...");
+
+  WiFiClientSecure client;
+  client.setInsecure(); 
+
+  HTTPClient http;
+  http.begin(client, firmwareUrl);
+
+  int httpCode = http.GET();
+
+  if (httpCode == 200) {
+    int contentLength = http.getSize();
+
+    if (contentLength > 0) {
+      Serial.println("Downloading firmware...");
+
+      if (Update.begin(contentLength)) {
+        WiFiClient * stream = http.getStreamPtr();
+        size_t written = Update.writeStream(*stream);
+
+        if (written == contentLength) {
+          if (Update.end()) {
+            Serial.println("Update Success!");
+            ESP.restart();
+          } else {
+            Serial.println("Update Failed");
+          }
+        }
+      }
+    }
+  } else {
+    Serial.println("No update / gagal akses");
+  }
+
+  http.end();
+}
